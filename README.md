@@ -1,3 +1,12 @@
+<p align="center">
+  <img src="https://img.shields.io/github/license/Nuggets10/ZshLand?style=for-the-badge&color=9C27B0" />
+  <img src="https://img.shields.io/github/stars/Nuggets10/ZshLand?style=for-the-badge&logo=github&color=FBC02D" />
+  <img src="https://img.shields.io/github/forks/Nuggets10/ZshLand?style=for-the-badge&logo=github&color=FF9800" />
+  <img src="https://img.shields.io/github/commit-activity/y/Nuggets10/ZshLand?style=for-the-badge&color=03A9F4" />
+  <img src="https://img.shields.io/github/contributors/Nuggets10/ZshLand?style=for-the-badge&color=00BCD4" />
+  <img src="https://img.shields.io/github/languages/top/Nuggets10/ZshLand?style=for-the-badge&color=FF5722" />
+</p>
+
 # 🕹️ | ZshLand
 ZshLand is a lightweight CLI survival game in a randomly generated world with different terrain types and various resources. The project's name comes from the word Zsh, abbreviation for Z shell, merged with Land, representing the vast world you can explore.
 
