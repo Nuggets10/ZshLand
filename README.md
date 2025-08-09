@@ -17,6 +17,7 @@ ZshLand is a lightweight CLI survival game in a randomly generated world with di
 - [🖼️ | Screenshots](#--screenshots)
 - [📜 | Main menu](#--main-menu)
 - [❓ | Game wiki](#--game-wiki)
+- [⚠️ | Report an issue](#--report-an-issue)
 - [📲 | Contribute](#--contribute)
 - [🚧 | Roadmap](#--roadmap)
 
@@ -40,6 +41,90 @@ The main menu provides you with two main UI elements:
 
 ## ❓ | Game wiki
 WIP
+
+## ⚠️ | Report an issue
+
+1. Title
+Keep it concise and descriptive.
+Avoid vague titles like "Problem" or "Doesn’t work".
+Examples:
+[Bug] User form crashes on submit
+[Feature] Add dark mode toggle
+[Question] Clarification on API rate limits
+
+2. Type of Issue
+Add at least one label (tag) to identify the nature of the issue.
+**This is mandatory.**
+
+Choose from:
+- Bug | low/medium/high priority
+- Enhancement
+- Documentation
+- Question
+
+**Invalid, Wontfix and Duplicate tags should only be used to filter issues by mantainers.**
+
+3. Issue Template
+Please fill out the relevant sections below based on the type of issue:
+
+**Bug report**
+
+```
+**What is the problem?**
+Describe what isn’t working. Be clear and specific.
+
+**Steps to Reproduce:**
+1. Go to '...'
+2. Click on '...'
+3. Scroll down to '...'
+4. See error
+
+**Expected Behavior:**
+Explain what you expected to happen.
+
+**Actual Behavior:**
+Describe what actually happens.
+
+**Screenshots (if applicable):**
+Attach images or videos to help explain.
+
+**Environment:**
+- OS: [e.g. Windows 11 / macOS Ventura]
+- App version: [e.g. v1.2.3]
+```
+
+**Feature request/Enhancement**
+```
+**What is the feature or improvement you're requesting?**
+Describe the functionality clearly.
+
+**Why is it useful or important?**
+Explain the benefit or use case.
+
+**Additional context:**
+Include any relevant examples, mockups, or references.
+```
+
+**Documentation Issue**
+```
+**What needs to be changed or added?**
+Explain what’s wrong or missing.
+
+**Where is it located?**
+Provide the file name or URL (if public).
+
+**Suggested fix (optional):**
+Include a possible correction or contribution.
+```
+
+**Question**
+```
+**What do you need help with or want to understand?**
+Provide context when necessary.
+
+**What have you tried so far?**
+Let contributors know what you’ve done to solve it.
+```
 
 ## 📲 | Contribute
 Feel free to contribute your own code to the project, even if you're a complete beginner and just want to help.
