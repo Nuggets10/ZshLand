@@ -25,7 +25,8 @@ ZshLand is a lightweight CLI survival game in a randomly generated world with di
 WIP
 
 ## 🖼️ | Screenshots
-![An example of random terrain generation](https://github.com/user-attachments/assets/916c25ff-69f0-4a7b-8acb-21a28a9c9684)
+
+<img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/916c25ff-69f0-4a7b-8acb-21a28a9c9684" />
 *An example of random terrain generation*
 
 ## 📜 | Main menu
@@ -37,7 +38,7 @@ The main menu provides you with two main UI elements:
    -  **"Contribute"**. Gives a brief explanation on how to contribute and gives you a link to the "Pull requests" tab of this repository.
    -  **"Quit"**. Closes the game.
   
-<img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/94e63bae-7a34-4df5-8797-3eb4f09b4d8c" />
+<img width="1920" height="1080" alt="Main menu screenshot" src="https://github.com/user-attachments/assets/94e63bae-7a34-4df5-8797-3eb4f09b4d8c" />
 
 ## ❓ | Game wiki
 WIP
