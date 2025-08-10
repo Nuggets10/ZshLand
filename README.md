@@ -42,7 +42,7 @@ The main menu provides you with two main UI elements:
 <img width="1920" height="1080" alt="Main menu screenshot" src="https://github.com/user-attachments/assets/94e63bae-7a34-4df5-8797-3eb4f09b4d8c" />
 
 ## ❓ | Game wiki
-WIP
+In the wiki you'll find all types of informations about the gameplay of ZshLand. Wiki's pages range from lists of available in-game items to full tutorials on how to play. [Wiki Home Page](https://github.com/Nuggets10/ZshLand/wiki/%F0%9F%8F%A1-%7C-Start-Page)
 
 ## ⚠️ | Report an issue
 
