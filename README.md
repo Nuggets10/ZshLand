@@ -45,7 +45,8 @@ WIP
 
 ## ⚠️ | Report an issue
 
-1. Title
+### 1. Title
+
 Keep it concise and descriptive.
 Avoid vague titles like "Problem" or "Doesn’t work".
 Examples:
@@ -53,7 +54,8 @@ Examples:
 [Feature] Add dark mode toggle
 [Question] Clarification on API rate limits
 
-2. Type of Issue
+### 2. Type of Issue
+
 Add at least one label (tag) to identify the nature of the issue.
 **This is mandatory.**
 
@@ -65,7 +67,8 @@ Choose from:
 
 **Invalid, Wontfix and Duplicate tags should only be used to filter issues by mantainers.**
 
-3. Issue Template
+### 3. Issue Template
+
 Please fill out the relevant sections below based on the type of issue:
 
 **Bug report**
@@ -139,7 +142,7 @@ If there's anything to modify, I'll personally take care of that or I'll alert y
 The simplest way is to fork the repository on your own account, make your modifications and just send a pull request to this repository. After proper revisioning, if the request is accepted, you can freely remove the forked repository from your account.
 
 ## 🚧 | Roadmap
-The following are the features I am currently working on. Free feel to contribute your own code to speed up development times.
+The following are the features I am currently working on. Feel free to contribute your own code to speed up development times.
 - In-game UI panel to display player's stats such as inventory, hunger, thirst and more.
 - Inventory and crafting system
 - Resource collection
