@@ -1,0 +1,35 @@
+name: Generate LOC Badge
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  count-loc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Count lines of code
+        id: count
+        run: |
+          total_loc=$(find . -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' -o -name '*.cpp' -o -name '*.c' -o -name '*.rb' | xargs wc -l | tail -n 1 | awk '{print $1}')
+          echo "Total lines: $total_loc"
+          echo "loc=$total_loc" >> $GITHUB_OUTPUT
+
+      - name: Generate badge JSON
+        run: |
+          mkdir -p .github/badges
+          echo "{\"schemaVersion\":1,\"label\":\"lines of code\",\"message\":\"${{ steps.count.outputs.loc }}\",\"color\":\"blue\"}" > .github/badges/loc-badge.json
+
+      - name: Commit badge
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: '.github/badges/loc-badge.json'
+          message: 'Update LOC badge'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
