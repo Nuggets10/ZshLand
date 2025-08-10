@@ -5,6 +5,7 @@
   <img src="https://img.shields.io/github/commit-activity/y/Nuggets10/ZshLand?style=for-the-badge&color=03A9F4" />
   <img src="https://img.shields.io/github/contributors/Nuggets10/ZshLand?style=for-the-badge&color=00BCD4" />
   <img src="https://img.shields.io/github/languages/top/Nuggets10/ZshLand?style=for-the-badge&color=FF5722" />
+  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Nuggets10/ZshLand/main/.github/badges/loc-badge.json&style=for-the-badge&color=4CAF50" />
 </p>
 
 # 🕹️ | ZshLand
