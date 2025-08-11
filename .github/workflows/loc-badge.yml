@@ -17,7 +17,18 @@ jobs:
       - name: Count lines of code
         id: count
         run: |
-          total_loc=$(find . -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' -o -name '*.cpp' -o -name '*.c' -o -name '*.rb' | xargs wc -l | tail -n 1 | awk '{print $1}')
+          total_loc=$(find . \
+            -name '*.js' \
+            -o -name '*.ts' \
+            -o -name '*.py' \
+            -o -name '*.java' \
+            -o -name '*.cpp' \
+            -o -name '*.c' \
+            -o -name '*.rb' \
+            -o -name '*.hpp' \
+            -o -name '*.h' \
+            -o -name '*.sh' \
+            | xargs wc -l | tail -n 1 | awk '{print $1}')
           echo "Total lines: $total_loc"
           echo "loc=$total_loc" >> $GITHUB_OUTPUT
 
