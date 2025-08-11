@@ -3,6 +3,9 @@
 #include <locale.h>
 #include <ctime>
 #include "core/perlinNoise.hpp"
+#include "ui/gameUI.hpp"
+#include <chrono>
+#include <thread>
 
 const int width = 3000;
 const int height = 3000;
@@ -16,6 +19,7 @@ int generateMap() {
     curs_set(0);
     start_color();
     use_default_colors();
+    nodelay(stdscr, TRUE);
 
     init_pair(1, COLOR_CYAN, -1);    // Water
     init_pair(2, COLOR_YELLOW, -1);  // Beach
@@ -53,8 +57,13 @@ int generateMap() {
     getmaxyx(stdscr, screenH, screenW);
     int camX = screenW / 2;
     int camY = screenH / 2;
+    int h, w;
+    getmaxyx(stdscr, h, w);
+    gameUI menu(h, 40, 0, w - 40);
 
     bool running = true;
+    auto lastStaminaUpdate = std::chrono::steady_clock::now();
+
     while (running) {
         clear();
 
@@ -112,6 +121,8 @@ int generateMap() {
 
         refresh();
 
+        menu.draw();
+
         int ch = getch();
 
         int playerX = camX + screenW / 2;
@@ -119,38 +130,46 @@ int generateMap() {
 
         switch (ch) {
             case KEY_LEFT:
-                if (playerX > 0 && playerY >= 0 && playerY < height) {
+                if (playerX > 0 && playerY >= 0 && playerY < height && menu.stamina > 1) {
                     wchar_t nextTile = map[playerY][playerX - 1];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camX--;
+                        int currentStamina = menu.stamina;
+                        menu.setStamina(currentStamina - 5);
                     }
                 }
                 break;
             case KEY_RIGHT:
-                if (playerX < width - 1 && playerY >= 0 && playerY < height) {
+                if (playerX < width - 1 && playerY >= 0 && playerY < height && menu.stamina > 1) {
                     wchar_t nextTile = map[playerY][playerX + 1];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camX++;
+                        int currentStamina = menu.stamina;
+                        menu.setStamina(currentStamina - 5);
                     }
                 }
                 break;
             case KEY_UP:
-                if (playerY > 0 && playerX >= 0 && playerX < width) {
+                if (playerY > 0 && playerX >= 0 && playerX < width && menu.stamina > 1) {
                     wchar_t nextTile = map[playerY - 1][playerX];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camY--;
+                        int currentStamina = menu.stamina;
+                        menu.setStamina(currentStamina - 5);
                     }
                 }
                 break;
             case KEY_DOWN:
-                if (playerY < height - 1 && playerX >= 0 && playerX < width) {
+                if (playerY < height - 1 && playerX >= 0 && playerX < width && menu.stamina > 1) {
                     wchar_t nextTile = map[playerY + 1][playerX];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camY++;
+                        int currentStamina = menu.stamina;
+                        menu.setStamina(currentStamina - 5);
                     }
                 }
                 break;
@@ -160,8 +179,19 @@ int generateMap() {
                 break;
         }
 
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = now - lastStaminaUpdate;
+        if (elapsed.count() >= 0.25) {
+            int currentStamina = menu.stamina;
+            if (currentStamina < 100) {
+                menu.setStamina(std::min(currentStamina + 5, 100));
+            }
+        lastStaminaUpdate = now;
+    }
         camX = std::max(0, std::min(camX, width - screenW));
         camY = std::max(0, std::min(camY, height - screenH));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(33));
 
     }
     endwin();
