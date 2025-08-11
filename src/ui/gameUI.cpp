@@ -1,4 +1,70 @@
-#include "ui/menuUI.hpp"
-#include <algorithm>
-#include <sstream>
-#include "core/mapGenerator.hpp"
+#include "ui/gameUI.hpp"
+
+gameUI::gameUI(int h, int w, int y, int x)
+    : height(h), width(w), starty(y), startx(x)
+{
+    win = newwin(height, width, starty, startx);
+
+    start_color();
+    use_default_colors();
+    init_pair(10, COLOR_WHITE, -1);
+    init_pair(11, COLOR_RED, -1);
+    init_pair(12, COLOR_GREEN, -1);
+    init_pair(13, COLOR_YELLOW, -1);
+    init_pair(14, COLOR_CYAN, -1);
+}
+
+gameUI::~gameUI() {
+    if (win) {
+        delwin(win);
+        win = nullptr;
+    }
+}
+
+void gameUI::draw() {
+    werase(win);
+    box(win, 0, 0);
+    drawStats();
+
+    wrefresh(win);
+}
+
+void gameUI::drawBar(int y, int x, int value, int color_pair) {
+    int filled = value / 5;
+    int empty = 20 - filled;
+
+    wprintw(win, "[");
+    wattron(win, COLOR_PAIR(color_pair));
+    for (int i = 0; i < filled; i++) {
+        wprintw(win, "█");
+    }
+    for (int i = 0; i < empty; i++) {
+        wprintw(win, " ");
+    }
+    wattroff(win, COLOR_PAIR(color_pair));
+    wprintw(win, "]");
+}
+
+void gameUI::drawStats() {
+    int yPos = 1;
+
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    mvwprintw(win, yPos++, 2, "Health   ");
+    wattroff(win, A_BOLD | COLOR_PAIR(10));
+    drawBar(yPos++, 2, health, 11);
+
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    mvwprintw(win, yPos++, 2, "Stamina  ");
+    wattroff(win, A_BOLD | COLOR_PAIR(10));
+    drawBar(yPos++, 2, stamina, 12);
+
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    mvwprintw(win, yPos++, 2, "Hunger   ");
+    wattroff(win, A_BOLD | COLOR_PAIR(10));
+    drawBar(yPos++, 2, hunger, 13);
+
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    mvwprintw(win, yPos++, 2, "Thirst   ");
+    wattroff(win, A_BOLD | COLOR_PAIR(10));
+    drawBar(yPos++, 2, thirst, 14);
+}
