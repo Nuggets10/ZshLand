@@ -50,10 +50,6 @@ In the wiki you'll find all types of informations about the gameplay of ZshLand.
 
 Keep it concise and descriptive.
 Avoid vague titles like "Problem" or "Doesn’t work".
-Examples:
-[Bug] User form crashes on submit
-[Feature] Add dark mode toggle
-[Question] Clarification on API rate limits
 
 ### 2. Type of Issue
 
