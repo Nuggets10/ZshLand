@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Build all src cpp with includes and ncursesw",
+            "command": "/usr/bin/clang++",
+            "args": [
+                "-fcolor-diagnostics",
+                "-fansi-escape-codes",
+                "-g",
+                "-I",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src/**/*.cpp",
+                "-lncursesw",
+                "-o",
+                "${workspaceFolder}/src/core/main"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build",
+            "detail": "Compile all src cpp with includes and link ncursesw"
+        }
+    ]
+}

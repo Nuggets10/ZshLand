@@ -4,7 +4,14 @@
 #include <ncursesw/ncurses.h>
 #include <string>
 #include <vector>
+#include "core/playerState.hpp" // serve per conoscere playerState
 
-int generateMap();
+class mapGenerator {
+public:
+    int generateMap();
+
+private:
+    playerState player; // membro della classe
+};
 
 #endif

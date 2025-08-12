@@ -190,7 +190,8 @@ int mainMenu() {
                     endwin();
                     return 0;
                 } else {
-                    generateMap();
+                    mapGenerator mapGenerator;
+                    mapGenerator.generateMap();
                     return options[selected].id;
                 }
                 break;

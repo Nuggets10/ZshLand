@@ -4,6 +4,7 @@
 #include <ctime>
 #include "core/perlinNoise.hpp"
 #include "ui/gameUI.hpp"
+#include "core/playerState.hpp"
 #include <chrono>
 #include <thread>
 
@@ -11,7 +12,12 @@ const int width = 3000;
 const int height = 3000;
 const double scale = 0.025;
 
-int generateMap() {
+class mapGenerator {
+public:
+    int generateMap();
+};
+
+int mapGenerator::generateMap() {
     setlocale(LC_ALL, "");
     initscr();
     keypad(stdscr, TRUE);
@@ -59,10 +65,13 @@ int generateMap() {
     int camY = screenH / 2;
     int h, w;
     getmaxyx(stdscr, h, w);
-    gameUI menu(h, 40, 0, w - 40);
+    playerState player;
+    gameUI menu(h, 40, 0, w - 40, player);
 
     bool running = true;
     auto lastStaminaUpdate = std::chrono::steady_clock::now();
+    auto lastHungerUpdate = std::chrono::steady_clock::now();
+    auto lastThirstUpdate = std::chrono::steady_clock::now();
 
     while (running) {
         clear();
@@ -130,46 +139,46 @@ int generateMap() {
 
         switch (ch) {
             case KEY_LEFT:
-                if (playerX > 0 && playerY >= 0 && playerY < height && menu.stamina > 1) {
+                if (playerX > 0 && playerY >= 0 && playerY < height && player.stamina > 1) {
                     wchar_t nextTile = map[playerY][playerX - 1];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camX--;
-                        int currentStamina = menu.stamina;
-                        menu.setStamina(currentStamina - 5);
+                        int currentStamina = player.stamina;
+                        player.decreaseStamina(5);
                     }
                 }
                 break;
             case KEY_RIGHT:
-                if (playerX < width - 1 && playerY >= 0 && playerY < height && menu.stamina > 1) {
+                if (playerX < width - 1 && playerY >= 0 && playerY < height && player.stamina > 1) {
                     wchar_t nextTile = map[playerY][playerX + 1];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camX++;
-                        int currentStamina = menu.stamina;
-                        menu.setStamina(currentStamina - 5);
+                        int currentStamina = player.stamina;
+                        player.decreaseStamina(5);
                     }
                 }
                 break;
             case KEY_UP:
-                if (playerY > 0 && playerX >= 0 && playerX < width && menu.stamina > 1) {
+                if (playerY > 0 && playerX >= 0 && playerX < width && player.stamina > 1) {
                     wchar_t nextTile = map[playerY - 1][playerX];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camY--;
-                        int currentStamina = menu.stamina;
-                        menu.setStamina(currentStamina - 5);
+                        int currentStamina = player.stamina;
+                        player.decreaseStamina(5);
                     }
                 }
                 break;
             case KEY_DOWN:
-                if (playerY < height - 1 && playerX >= 0 && playerX < width && menu.stamina > 1) {
+                if (playerY < height - 1 && playerX >= 0 && playerX < width && player.stamina > 1) {
                     wchar_t nextTile = map[playerY + 1][playerX];
                     if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
                         nextTile != L'▓' && nextTile != L'▇') {
                         camY++;
-                        int currentStamina = menu.stamina;
-                        menu.setStamina(currentStamina - 5);
+                        int currentStamina = player.stamina;
+                        player.decreaseStamina(5);
                     }
                 }
                 break;
@@ -179,15 +188,29 @@ int generateMap() {
                 break;
         }
 
-        auto now = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = now - lastStaminaUpdate;
-        if (elapsed.count() >= 0.25) {
-            int currentStamina = menu.stamina;
-            if (currentStamina < 100) {
-                menu.setStamina(std::min(currentStamina + 5, 100));
+        auto staminaNow = std::chrono::steady_clock::now();
+        std::chrono::duration<double> staminaElapsed = staminaNow - lastStaminaUpdate;
+        if (staminaElapsed.count() >= 0.25) {
+            if (player.stamina < 100) {
+                player.increaseStamina(5);
             }
-        lastStaminaUpdate = now;
+        lastStaminaUpdate = staminaNow;
     }
+
+    auto hungerNow = std::chrono::steady_clock::now();
+        std::chrono::duration<double> hungerElapsed = hungerNow - lastHungerUpdate;
+        if (hungerElapsed.count() >= 10) {
+            player.decreaseHunger(1);
+        lastHungerUpdate = hungerNow;
+    }
+
+    auto thirstNow = std::chrono::steady_clock::now();
+        std::chrono::duration<double> thirstElapsed = thirstNow - lastThirstUpdate;
+        if (thirstElapsed.count() >= 20) {
+            player.decreaseThirst(1);
+        lastThirstUpdate = thirstNow;
+    }
+
         camX = std::max(0, std::min(camX, width - screenW));
         camY = std::max(0, std::min(camY, height - screenH));
 

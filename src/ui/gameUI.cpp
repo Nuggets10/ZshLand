@@ -1,7 +1,8 @@
 #include "ui/gameUI.hpp"
+#include "core/playerState.hpp"
 
-gameUI::gameUI(int h, int w, int y, int x)
-    : height(h), width(w), starty(y), startx(x)
+gameUI::gameUI(int h, int w, int y, int x, playerState& p)
+    : height(h), width(w), starty(y), startx(x), player(p)
 {
     win = newwin(height, width, starty, startx);
 
@@ -51,20 +52,20 @@ void gameUI::drawStats() {
     wattron(win, A_BOLD | COLOR_PAIR(10));
     mvwprintw(win, yPos++, 2, "Health   ");
     wattroff(win, A_BOLD | COLOR_PAIR(10));
-    drawBar(yPos++, 2, health, 11);
+    drawBar(yPos++, 2, player.health, 11);
 
     wattron(win, A_BOLD | COLOR_PAIR(10));
     mvwprintw(win, yPos++, 2, "Stamina  ");
     wattroff(win, A_BOLD | COLOR_PAIR(10));
-    drawBar(yPos++, 2, stamina, 12);
+    drawBar(yPos++, 2, player.stamina, 12);
 
     wattron(win, A_BOLD | COLOR_PAIR(10));
     mvwprintw(win, yPos++, 2, "Hunger   ");
     wattroff(win, A_BOLD | COLOR_PAIR(10));
-    drawBar(yPos++, 2, hunger, 13);
+    drawBar(yPos++, 2, player.hunger, 13);
 
     wattron(win, A_BOLD | COLOR_PAIR(10));
     mvwprintw(win, yPos++, 2, "Thirst   ");
     wattroff(win, A_BOLD | COLOR_PAIR(10));
-    drawBar(yPos++, 2, thirst, 14);
+    drawBar(yPos++, 2, player.thirst, 14);
 }

@@ -2,23 +2,14 @@
 #define GAME_UI
 
 #include <ncurses.h>
+#include "core/playerState.hpp"
 
 class gameUI {
 public:
-    gameUI(int height, int width, int starty, int startx);
+    gameUI(int height, int width, int starty, int startx, playerState& p);
     ~gameUI();
 
     void draw();
-
-    void setHealth(int val) { health = val; }
-    void setStamina(int val) { stamina = val; }
-    void setHunger(int val) { hunger = val; }
-    void setThirst(int val) { thirst = val; }
-
-    int health = 100;
-    int stamina = 100;
-    int hunger = 100;
-    int thirst = 100;
 
 private:
     WINDOW* win;
@@ -26,6 +17,8 @@ private:
 
     void drawBar(int y, int x, int value, int color_pair);
     void drawStats();
+
+    playerState& player;
 };
 
 #endif
