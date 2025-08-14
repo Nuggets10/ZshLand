@@ -2,11 +2,13 @@
 #include <vector>
 #include <locale.h>
 #include <ctime>
+#include <mutex>
 #include "core/perlinNoise.hpp"
 #include "ui/gameUI.hpp"
 #include "core/playerState.hpp"
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 const int width = 3000;
 const int height = 3000;
@@ -38,31 +40,145 @@ int mapGenerator::generateMap() {
     std::uint32_t seed = static_cast<std::uint32_t>(time(nullptr));
     siv::PerlinNoise perlin(seed);
 
-    std::vector<std::vector<wchar_t>> map(height, std::vector<wchar_t>(width));
+    // --- Cache mappa: inizialmente "vuota"
+    std::vector<std::vector<wchar_t>> map(height, std::vector<wchar_t>(width, L'\0'));
+    std::mutex mapMutex;
+    std::atomic<bool> stopGen{false};
 
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x) {
-            double noise = perlin.noise2D_01(x * scale, y * scale);
-            if (noise < 0.3)
-                map[y][x] = L'█'; // Water
-            else if (noise < 0.35)
-                map[y][x] = L'▒'; // Beach
-            else if (noise < 0.55)
-                map[y][x] = (rand() % 100 < 90) ? L'#' : rand() % 2 ? L'↑' : L'Y'; // Plains
-            else if (noise < 0.7)
-                map[y][x] = (rand() % 100 < 96) ?
-                    ((rand() % 2) ? L'n' : L'm')
-                    : rand() % 2 ? L'↑' : L'Y';
-            else if (noise < 0.8)
-                map[y][x] = L'▓'; // Mountains
-            else
-                map[y][x] = L'▇'; // Snow
+    // --- RNG deterministico per cella (SplitMix64)
+    auto splitmix64 = [](uint64_t x) {
+        x += 0x9e3779b97f4a7c15ULL;
+        x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+        return x ^ (x >> 31);
+    };
+    auto cellRand = [&](int x, int y, uint64_t salt = 0) -> uint32_t {
+        uint64_t k = (uint64_t(seed) << 32) ^ (uint64_t(uint32_t(x)) << 1) ^ (uint64_t(uint32_t(y)) << 33) ^ salt;
+        return uint32_t(splitmix64(k));
+    };
+    auto cellRand01 = [&](int x, int y, uint64_t salt = 0) -> double {
+        return (cellRand(x, y, salt) / double(UINT32_MAX));
+    };
+
+    // --- Generazione deterministica della singola tile (identica alla logica originale)
+    auto makeTile = [&](int x, int y) -> wchar_t {
+        double noise = perlin.noise2D_01(x * scale, y * scale);
+        if (noise < 0.3)  return L'█'; // Water
+        if (noise < 0.35) return L'▒'; // Beach
+        if (noise < 0.55) {
+            // Plains: ~90% '#', altrimenti '↑' o 'Y'
+            double r = cellRand01(x, y, 1);
+            if (r < 0.90) return L'#';
+            return (cellRand(x, y, 2) & 1) ? L'↑' : L'Y';
         }
+        if (noise < 0.7) {
+            // Hills: ~96% 'n'/'m', altrimenti '↑' o 'Y'
+            double r = cellRand01(x, y, 3);
+            if (r < 0.96)
+                return (cellRand(x, y, 4) & 1) ? L'n' : L'm';
+            return (cellRand(x, y, 5) & 1) ? L'↑' : L'Y';
+        }
+        if (noise < 0.8) return L'▓'; // Mountains
+        return L'▇';                  // Snow
+    };
 
+    // --- Accesso sicuro: se non generata, la genera e mette in cache
+    auto getTile = [&](int x, int y) -> wchar_t {
+        if (x < 0 || y < 0 || x >= width || y >= height) return L' ';
+        {
+            std::lock_guard<std::mutex> lk(mapMutex);
+            if (map[y][x] != L'\0') return map[y][x];
+        }
+        wchar_t t = makeTile(x, y);
+        {
+            std::lock_guard<std::mutex> lk(mapMutex);
+            // ricontrollo in caso l'abbia scritta il thread bg nel frattempo
+            if (map[y][x] == L'\0') map[y][x] = t;
+            return map[y][x];
+        }
+    };
+
+    // --- Generazione chunk
+    struct Chunk { int x0, y0, w, h; };
+    auto genChunkIntoMap = [&](const Chunk& c) {
+        // Genero in buffer locale per ridurre il lock
+        std::vector<wchar_t> buf(c.w * c.h);
+        for (int dy = 0; dy < c.h; ++dy) {
+            int y = c.y0 + dy;
+            if (y < 0 || y >= height) continue;
+            for (int dx = 0; dx < c.w; ++dx) {
+                int x = c.x0 + dx;
+                if (x < 0 || x >= width) continue;
+                buf[dy * c.w + dx] = makeTile(x, y);
+            }
+        }
+        std::lock_guard<std::mutex> lk(mapMutex);
+        for (int dy = 0; dy < c.h; ++dy) {
+            int y = c.y0 + dy; if (y < 0 || y >= height) continue;
+            for (int dx = 0; dx < c.w; ++dx) {
+                int x = c.x0 + dx; if (x < 0 || x >= width) continue;
+                if (map[y][x] == L'\0') map[y][x] = buf[dy * c.w + dx];
+            }
+        }
+    };
+
+    // --- Ordine di caricamento a spirale dal centro
+    auto spiralChunks = [&](int chunkSize) {
+        std::vector<Chunk> out;
+        int cx = width / 2, cy = height / 2;
+        int r = 0;
+        while (true) {
+            bool added = false;
+            for (int by = cy - r * chunkSize; by <= cy + r * chunkSize; by += chunkSize) {
+                for (int bx = cx - r * chunkSize; bx <= cx + r * chunkSize; bx += chunkSize) {
+                    if (by != cy - r * chunkSize && by != cy + r * chunkSize &&
+                        bx != cx - r * chunkSize && bx != cx + r * chunkSize) continue; // solo bordo anello
+                    Chunk c{bx, by, chunkSize, chunkSize};
+                    // stop se completamente fuori
+                    if (c.x0 >= width || c.y0 >= height || c.x0 + c.w <= 0 || c.y0 + c.h <= 0) continue;
+                    out.push_back(c);
+                    added = true;
+                }
+            }
+            if (!added) break;
+            if ((cx - (r+1)*chunkSize <= 0 && cy - (r+1)*chunkSize <= 0 &&
+                 cx + (r+1)*chunkSize >= width && cy + (r+1)*chunkSize >= height)) break;
+            ++r;
+        }
+        return out;
+    };
+
+    // --- Precarica il blocco iniziale intorno al player (schermo * 1.2)
     int screenW, screenH;
     getmaxyx(stdscr, screenH, screenW);
-    int camX = screenW / 2;
-    int camY = screenH / 2;
+    int camX = (width  - screenW) / 2;
+    int camY = (height - screenH) / 2;
+
+    auto preloadView = [&](){
+        int pad = 2;
+        Chunk c{
+            std::max(0, camX - pad),
+            std::max(0, camY - pad),
+            std::min(width  - std::max(0, camX - pad), screenW + 2 * pad),
+            std::min(height - std::max(0, camY - pad), screenH + 2 * pad)
+        };
+        genChunkIntoMap(c);
+    };
+    preloadView();
+
+    // --- Thread di generazione in background
+    const int chunkSize = 200;
+    std::thread bg([&]{
+        auto order = spiralChunks(chunkSize);
+        for (const auto& c : order) {
+            if (stopGen.load()) break;
+            genChunkIntoMap(c);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // micro-yield
+        }
+    });
+    bg.detach();
+
+    // --- UI di gioco
     int h, w;
     getmaxyx(stdscr, h, w);
     playerState player;
@@ -70,22 +186,22 @@ int mapGenerator::generateMap() {
 
     bool running = true;
     auto lastStaminaUpdate = std::chrono::steady_clock::now();
-    auto lastHungerUpdate = std::chrono::steady_clock::now();
-    auto lastThirstUpdate = std::chrono::steady_clock::now();
+    auto lastHungerUpdate  = std::chrono::steady_clock::now();
+    auto lastThirstUpdate  = std::chrono::steady_clock::now();
 
     while (running) {
         clear();
 
+        // Disegno viewport
         for (int y = 0; y < screenH; ++y) {
             int mapY = camY + y;
             if (mapY >= height) break;
-
             move(y, 0);
             for (int x = 0; x < screenW; ++x) {
                 int mapX = camX + x;
                 if (mapX >= width) break;
 
-                wchar_t tile = map[mapY][mapX];
+                wchar_t tile = getTile(mapX, mapY); // garantisce che la tile esista
 
                 if (y == screenH / 2 && x == screenW / 2) {
                     attron(A_BOLD | COLOR_PAIR(6));
@@ -94,27 +210,17 @@ int mapGenerator::generateMap() {
                     continue;
                 }
 
-
-                if (tile == L'█')
-                    attron(COLOR_PAIR(1));
-                else if (tile == L'▒')
-                    attron(A_BOLD | COLOR_PAIR(2));
+                if (tile == L'█')                              attron(COLOR_PAIR(1));
+                else if (tile == L'▒')                        attron(A_BOLD | COLOR_PAIR(2));
                 else if (tile == L'#' || tile == L'↑' || tile == L'Y') {
-                    if (tile == L'#')
-                        attron(A_BOLD | COLOR_PAIR(3));
-                    else
-                        attron(COLOR_PAIR(7));
+                    if (tile == L'#')                         attron(A_BOLD | COLOR_PAIR(3));
+                    else                                      attron(COLOR_PAIR(7));
                 }
-                else if (tile == L'n' || tile == L'm' || tile == L'↑' || tile == L'¶') {
-                    if (tile == L'↑' || tile == L'Y')
-                        attron(COLOR_PAIR(7));
-                    else
-                        attron(COLOR_PAIR(4));
+                else if (tile == L'n' || tile == L'm' || tile == L'¶') {
+                                                              attron(COLOR_PAIR(4));
                 }
-                else if (tile == L'▓')
-                    attron(A_BOLD | COLOR_PAIR(5));
-                else
-                    attron(COLOR_PAIR(6));
+                else if (tile == L'▓')                        attron(A_BOLD | COLOR_PAIR(5));
+                else                                          attron(COLOR_PAIR(6));
 
                 addnwstr(&tile, 1);
 
@@ -129,57 +235,39 @@ int mapGenerator::generateMap() {
         }
 
         refresh();
-
         menu.draw();
 
         int ch = getch();
-
         int playerX = camX + screenW / 2;
         int playerY = camY + screenH / 2;
 
+        auto passable = [&](wchar_t t){
+            return !(t == L'Y' || t == L'↑' || t == L'█' || t == L'▓' || t == L'▇');
+        };
+
         switch (ch) {
             case KEY_LEFT:
-                if (playerX > 0 && playerY >= 0 && playerY < height && player.stamina > 1) {
-                    wchar_t nextTile = map[playerY][playerX - 1];
-                    if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
-                        nextTile != L'▓' && nextTile != L'▇') {
-                        camX--;
-                        int currentStamina = player.stamina;
-                        player.decreaseStamina(5);
-                    }
+                if (playerX > 0 && player.stamina > 1) {
+                    wchar_t nextTile = getTile(playerX - 1, playerY);
+                    if (passable(nextTile)) { camX--; player.decreaseStamina(5); }
                 }
                 break;
             case KEY_RIGHT:
-                if (playerX < width - 1 && playerY >= 0 && playerY < height && player.stamina > 1) {
-                    wchar_t nextTile = map[playerY][playerX + 1];
-                    if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
-                        nextTile != L'▓' && nextTile != L'▇') {
-                        camX++;
-                        int currentStamina = player.stamina;
-                        player.decreaseStamina(5);
-                    }
+                if (playerX < width - 1 && player.stamina > 1) {
+                    wchar_t nextTile = getTile(playerX + 1, playerY);
+                    if (passable(nextTile)) { camX++; player.decreaseStamina(5); }
                 }
                 break;
             case KEY_UP:
-                if (playerY > 0 && playerX >= 0 && playerX < width && player.stamina > 1) {
-                    wchar_t nextTile = map[playerY - 1][playerX];
-                    if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
-                        nextTile != L'▓' && nextTile != L'▇') {
-                        camY--;
-                        int currentStamina = player.stamina;
-                        player.decreaseStamina(5);
-                    }
+                if (playerY > 0 && player.stamina > 1) {
+                    wchar_t nextTile = getTile(playerX, playerY - 1);
+                    if (passable(nextTile)) { camY--; player.decreaseStamina(5); }
                 }
                 break;
             case KEY_DOWN:
-                if (playerY < height - 1 && playerX >= 0 && playerX < width && player.stamina > 1) {
-                    wchar_t nextTile = map[playerY + 1][playerX];
-                    if (nextTile != L'Y' && nextTile != L'↑' && nextTile != L'█' &&
-                        nextTile != L'▓' && nextTile != L'▇') {
-                        camY++;
-                        int currentStamina = player.stamina;
-                        player.decreaseStamina(5);
-                    }
+                if (playerY < height - 1 && player.stamina > 1) {
+                    wchar_t nextTile = getTile(playerX, playerY + 1);
+                    if (passable(nextTile)) { camY++; player.decreaseStamina(5); }
                 }
                 break;
             case 'q':
@@ -188,35 +276,33 @@ int mapGenerator::generateMap() {
                 break;
         }
 
-        auto staminaNow = std::chrono::steady_clock::now();
-        std::chrono::duration<double> staminaElapsed = staminaNow - lastStaminaUpdate;
-        if (staminaElapsed.count() >= 0.25) {
-            if (player.stamina < 100) {
-                player.increaseStamina(5);
-            }
-        lastStaminaUpdate = staminaNow;
-    }
+        // Rigenero un piccolo margine attorno alla nuova camera per evitare popping
+        preloadView();
 
-    auto hungerNow = std::chrono::steady_clock::now();
-        std::chrono::duration<double> hungerElapsed = hungerNow - lastHungerUpdate;
-        if (hungerElapsed.count() >= 10) {
+        // Timers player
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration<double>(now - lastStaminaUpdate).count() >= 0.25) {
+            if (player.stamina < 100) player.increaseStamina(5);
+            lastStaminaUpdate = now;
+        }
+        if (std::chrono::duration<double>(now - lastHungerUpdate).count() >= 10.0) {
             player.decreaseHunger(1);
-        lastHungerUpdate = hungerNow;
-    }
-
-    auto thirstNow = std::chrono::steady_clock::now();
-        std::chrono::duration<double> thirstElapsed = thirstNow - lastThirstUpdate;
-        if (thirstElapsed.count() >= 20) {
+            lastHungerUpdate = now;
+        }
+        if (std::chrono::duration<double>(now - lastThirstUpdate).count() >= 20.0) {
             player.decreaseThirst(1);
-        lastThirstUpdate = thirstNow;
-    }
+            lastThirstUpdate = now;
+        }
 
+        // Limiti camera
         camX = std::max(0, std::min(camX, width - screenW));
         camY = std::max(0, std::min(camY, height - screenH));
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(33));
-
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
+
+    stopGen = true; // segnala al bg di fermarsi nel caso stia ancora girando
     endwin();
     return 0;
 }
+

@@ -25,8 +25,14 @@ gameUI::~gameUI() {
 void gameUI::draw() {
     werase(win);
     box(win, 0, 0);
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    mvwprintw(win, 1, 1, "--------------- STATS ----------------");
+    wattroff(win, A_BOLD | COLOR_PAIR(10));
     drawStats();
-
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    mvwprintw(win, 11, 1, "------------- INVENTORY --------------");
+    wattroff(win, A_BOLD | COLOR_PAIR(10));
+    drawInvPrev();
     wrefresh(win);
 }
 
@@ -47,7 +53,7 @@ void gameUI::drawBar(int y, int x, int value, int color_pair) {
 }
 
 void gameUI::drawStats() {
-    int yPos = 1;
+    int yPos = 3;
 
     wattron(win, A_BOLD | COLOR_PAIR(10));
     mvwprintw(win, yPos++, 2, "Health   ");
@@ -68,4 +74,17 @@ void gameUI::drawStats() {
     mvwprintw(win, yPos++, 2, "Thirst   ");
     wattroff(win, A_BOLD | COLOR_PAIR(10));
     drawBar(yPos++, 2, player.thirst, 14);
+}
+
+void gameUI::drawInvPrev() {
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    mvwprintw(win, 13, 1, "        Press ");
+
+    wattron(win, A_BOLD | COLOR_PAIR(13));
+    wprintw(win, "[J]");
+
+    wattron(win, A_BOLD | COLOR_PAIR(10));
+    wprintw(win, " for full view");
+
+    wattroff(win, A_BOLD | COLOR_PAIR(10) | COLOR_PAIR(13));
 }

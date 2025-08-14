@@ -17,6 +17,7 @@ private:
 
     void drawBar(int y, int x, int value, int color_pair);
     void drawStats();
+    void drawInvPrev();
 
     playerState& player;
 };
