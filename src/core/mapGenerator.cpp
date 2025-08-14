@@ -40,12 +40,12 @@ int mapGenerator::generateMap() {
     std::uint32_t seed = static_cast<std::uint32_t>(time(nullptr));
     siv::PerlinNoise perlin(seed);
 
-    // --- Cache mappa: inizialmente "vuota"
+    // --- Cache creation
     std::vector<std::vector<wchar_t>> map(height, std::vector<wchar_t>(width, L'\0'));
     std::mutex mapMutex;
     std::atomic<bool> stopGen{false};
 
-    // --- RNG deterministico per cella (SplitMix64)
+    // --- RNG for each cell
     auto splitmix64 = [](uint64_t x) {
         x += 0x9e3779b97f4a7c15ULL;
         x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
@@ -60,29 +60,27 @@ int mapGenerator::generateMap() {
         return (cellRand(x, y, salt) / double(UINT32_MAX));
     };
 
-    // --- Generazione deterministica della singola tile (identica alla logica originale)
+    // --- Generation of each tile based on RNG
     auto makeTile = [&](int x, int y) -> wchar_t {
         double noise = perlin.noise2D_01(x * scale, y * scale);
-        if (noise < 0.3)  return L'█'; // Water
-        if (noise < 0.35) return L'▒'; // Beach
+        if (noise < 0.3)  return L'█';
+        if (noise < 0.35) return L'▒';
         if (noise < 0.55) {
-            // Plains: ~90% '#', altrimenti '↑' o 'Y'
             double r = cellRand01(x, y, 1);
             if (r < 0.90) return L'#';
             return (cellRand(x, y, 2) & 1) ? L'↑' : L'Y';
         }
         if (noise < 0.7) {
-            // Hills: ~96% 'n'/'m', altrimenti '↑' o 'Y'
             double r = cellRand01(x, y, 3);
             if (r < 0.96)
                 return (cellRand(x, y, 4) & 1) ? L'n' : L'm';
             return (cellRand(x, y, 5) & 1) ? L'↑' : L'Y';
         }
-        if (noise < 0.8) return L'▓'; // Mountains
-        return L'▇';                  // Snow
+        if (noise < 0.8) return L'▓';
+        return L'▇';
     };
 
-    // --- Accesso sicuro: se non generata, la genera e mette in cache
+    // --- If not generated put it in cache
     auto getTile = [&](int x, int y) -> wchar_t {
         if (x < 0 || y < 0 || x >= width || y >= height) return L' ';
         {
@@ -92,16 +90,14 @@ int mapGenerator::generateMap() {
         wchar_t t = makeTile(x, y);
         {
             std::lock_guard<std::mutex> lk(mapMutex);
-            // ricontrollo in caso l'abbia scritta il thread bg nel frattempo
             if (map[y][x] == L'\0') map[y][x] = t;
             return map[y][x];
         }
     };
 
-    // --- Generazione chunk
+    // --- Chunk generation
     struct Chunk { int x0, y0, w, h; };
     auto genChunkIntoMap = [&](const Chunk& c) {
-        // Genero in buffer locale per ridurre il lock
         std::vector<wchar_t> buf(c.w * c.h);
         for (int dy = 0; dy < c.h; ++dy) {
             int y = c.y0 + dy;
@@ -122,7 +118,7 @@ int mapGenerator::generateMap() {
         }
     };
 
-    // --- Ordine di caricamento a spirale dal centro
+    // --- Load order of chunks
     auto spiralChunks = [&](int chunkSize) {
         std::vector<Chunk> out;
         int cx = width / 2, cy = height / 2;
@@ -132,9 +128,8 @@ int mapGenerator::generateMap() {
             for (int by = cy - r * chunkSize; by <= cy + r * chunkSize; by += chunkSize) {
                 for (int bx = cx - r * chunkSize; bx <= cx + r * chunkSize; bx += chunkSize) {
                     if (by != cy - r * chunkSize && by != cy + r * chunkSize &&
-                        bx != cx - r * chunkSize && bx != cx + r * chunkSize) continue; // solo bordo anello
+                        bx != cx - r * chunkSize && bx != cx + r * chunkSize) continue;
                     Chunk c{bx, by, chunkSize, chunkSize};
-                    // stop se completamente fuori
                     if (c.x0 >= width || c.y0 >= height || c.x0 + c.w <= 0 || c.y0 + c.h <= 0) continue;
                     out.push_back(c);
                     added = true;
@@ -148,7 +143,7 @@ int mapGenerator::generateMap() {
         return out;
     };
 
-    // --- Precarica il blocco iniziale intorno al player (schermo * 1.2)
+    // --- Load chunk around the player
     int screenW, screenH;
     getmaxyx(stdscr, screenH, screenW);
     int camX = (width  - screenW) / 2;
@@ -166,19 +161,19 @@ int mapGenerator::generateMap() {
     };
     preloadView();
 
-    // --- Thread di generazione in background
+    // --- Background terrain generation using threads
     const int chunkSize = 200;
     std::thread bg([&]{
         auto order = spiralChunks(chunkSize);
         for (const auto& c : order) {
             if (stopGen.load()) break;
             genChunkIntoMap(c);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // micro-yield
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
     bg.detach();
 
-    // --- UI di gioco
+    // --- UI
     int h, w;
     getmaxyx(stdscr, h, w);
     playerState player;
@@ -192,7 +187,6 @@ int mapGenerator::generateMap() {
     while (running) {
         clear();
 
-        // Disegno viewport
         for (int y = 0; y < screenH; ++y) {
             int mapY = camY + y;
             if (mapY >= height) break;
@@ -201,7 +195,7 @@ int mapGenerator::generateMap() {
                 int mapX = camX + x;
                 if (mapX >= width) break;
 
-                wchar_t tile = getTile(mapX, mapY); // garantisce che la tile esista
+                wchar_t tile = getTile(mapX, mapY);
 
                 if (y == screenH / 2 && x == screenW / 2) {
                     attron(A_BOLD | COLOR_PAIR(6));
@@ -210,17 +204,23 @@ int mapGenerator::generateMap() {
                     continue;
                 }
 
-                if (tile == L'█')                              attron(COLOR_PAIR(1));
-                else if (tile == L'▒')                        attron(A_BOLD | COLOR_PAIR(2));
+                if (tile == L'█')
+                    attron(COLOR_PAIR(1));
+                else if (tile == L'▒')
+                    attron(A_BOLD | COLOR_PAIR(2));
                 else if (tile == L'#' || tile == L'↑' || tile == L'Y') {
-                    if (tile == L'#')                         attron(A_BOLD | COLOR_PAIR(3));
-                    else                                      attron(COLOR_PAIR(7));
+                    if (tile == L'#')
+                        attron(A_BOLD | COLOR_PAIR(3));
+                    else
+                        attron(COLOR_PAIR(7));
                 }
                 else if (tile == L'n' || tile == L'm' || tile == L'¶') {
-                                                              attron(COLOR_PAIR(4));
+                    attron(COLOR_PAIR(4));
                 }
-                else if (tile == L'▓')                        attron(A_BOLD | COLOR_PAIR(5));
-                else                                          attron(COLOR_PAIR(6));
+                else if (tile == L'▓')
+                    attron(A_BOLD | COLOR_PAIR(5));
+                else
+                    attron(COLOR_PAIR(6));
 
                 addnwstr(&tile, 1);
 
@@ -276,7 +276,7 @@ int mapGenerator::generateMap() {
                 break;
         }
 
-        // Rigenero un piccolo margine attorno alla nuova camera per evitare popping
+        // Generate margin around camera to not show popping effect
         preloadView();
 
         // Timers player
@@ -294,14 +294,13 @@ int mapGenerator::generateMap() {
             lastThirstUpdate = now;
         }
 
-        // Limiti camera
         camX = std::max(0, std::min(camX, width - screenW));
         camY = std::max(0, std::min(camY, height - screenH));
 
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
-    stopGen = true; // segnala al bg di fermarsi nel caso stia ancora girando
+    stopGen = true;
     endwin();
     return 0;
 }
