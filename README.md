@@ -10,10 +10,12 @@
 
 # 🕹️ | ZshLand
 ZshLand is a lightweight CLI survival game in a randomly generated world with different terrain types and various resources. The project's name comes from the word Zsh, abbreviation for Z shell, merged with Land, representing the vast world you can explore.
-
-<img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/45916444-1a5c-4ca9-8543-b7c7f1deaaa8" />
+<p align="center">
+  <img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/45916444-1a5c-4ca9-8543-b7c7f1deaaa8" />
+</p>
 
 ## 📚 | Sections
+
 - [📦 | Installation](#--installation)
 - [🖼️ | Screenshots](#--screenshots)
 - [📜 | Main menu](#--main-menu)
