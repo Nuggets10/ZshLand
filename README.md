@@ -28,12 +28,45 @@ ZshLand is a lightweight CLI survival game in a randomly generated world with di
 There are two ways of installing the project on your system. You can either download the latest release (WIP) or compile all the necessary files yourself.
 To compile the project follow these steps:
 - Clone the project to your system using `git clone https://github.com/Nuggets10/ZshLand.git`
-- Navigate to the project root folder, open a terminal and run the following commands:
-- - Update the packages list: `sudo apt update`
-  - Install required dependecies: `sudo apt install clang build-essential libncursesw6 libncursesw6-dev`
-  - Compile the project: `clang++ -fcolor-diagnostics -fansi-escape-codes -g \
--I include src/**/*.cpp -lncursesw -o src/core/main`
-- Execute the compiled file: `./src/core/main`
+- Navigate to the project root folder, open a terminal and run the following commands depending on your distro.
+
+### Debian / Ubuntu / Kali
+- Update the packages list:  
+  `sudo apt update`
+- Install required dependencies:  
+  `sudo apt install clang build-essential libncursesw6 libncursesw6-dev`
+- Compile the project:  
+  `clang++ -fcolor-diagnostics -fansi-escape-codes -g \
+  -I include src/**/*.cpp -lncursesw -o src/core/main`
+- Execute the compiled file:  
+  `./src/core/main`
+
+---
+
+### Arch Linux / Manjaro
+- Update the packages list:  
+  `sudo pacman -Syu`
+- Install required dependencies *(includes ncursesw support)*:  
+  `sudo pacman -S clang ncurses`
+- Compile the project:  
+  `clang++ -fcolor-diagnostics -fansi-escape-codes -g \
+  -I include src/**/*.cpp -lncursesw -o src/core/main`
+- Execute the compiled file:  
+  `./src/core/main`
+
+---
+
+### Fedora
+- Update the packages list:  
+  `sudo dnf check-update`
+- Install required dependencies *(includes ncursesw support)*:  
+  `sudo dnf install clang ncurses ncurses-devel`
+- Compile the project:  
+  `clang++ -fcolor-diagnostics -fansi-escape-codes -g \
+  -I include src/**/*.cpp -lncursesw -o src/core/main`
+- Execute the compiled file:  
+  `./src/core/main`
+
 ## 🖼️ | Screenshots
 
 <img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/916c25ff-69f0-4a7b-8acb-21a28a9c9684" />
